@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2008-2016 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
@@ -22,7 +22,9 @@
 
 #include "Common.h"
 #include "DatabaseEnv.h"
+#include "IoContext.h"
 #include "AsyncAcceptor.h"
+#include "Banner.h"
 #include "RASession.h"
 #include "Configuration/Config.h"
 #include "OpenSSLCrypto.h"
@@ -39,7 +41,6 @@
 #include "BattlegroundMgr.h"
 #include "TCSoap.h"
 #include "CliRunnable.h"
-#include "Banner.h"
 #include "GitRevision.h"
 #include "WorldSocket.h"
 #include "WorldSocketMgr.h"
@@ -53,6 +54,9 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
+#include <google/protobuf/stubs/common.h>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <google/protobuf/stubs/common.h>
 
 using namespace boost::program_options;
@@ -78,21 +82,18 @@ char serviceDescription[] = "TrinityCore World of Warcraft emulator world servic
 int m_ServiceStatus = -1;
 #endif
 
-boost::asio::io_service _ioService;
-boost::asio::deadline_timer _freezeCheckTimer(_ioService);
+Trinity::Asio::IoContext ioContext;
 uint32 _worldLoopCounter(0);
 uint32 _lastChangeMsTime(0);
 uint32 _maxCoreStuckTimeInMs(0);
 
 void SignalHandler(const boost::system::error_code& error, int signalNumber);
-void FreezeDetectorHandler(const boost::system::error_code& error);
-AsyncAcceptor* StartRaSocketAcceptor(boost::asio::io_service& ioService);
+AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext);
 bool StartDB();
 void StopDB();
 void WorldUpdateLoop();
 void ClearOnlineAccounts();
 void ShutdownCLIThread(std::thread* cliThread);
-void ShutdownThreadPool(std::vector<std::thread>& threadPool);
 bool LoadRealmInfo();
 variables_map GetConsoleArguments(int argc, char** argv, fs::path& configFile, std::string& cfg_service);
 
@@ -129,9 +130,11 @@ extern int main(int argc, char** argv)
         return 1;
     }
 
+    std::shared_ptr<Trinity::Asio::IoContext> ioContext = std::make_shared<Trinity::Asio::IoContext>();
+
     sLog->RegisterAppender<AppenderDB>();
     // If logs are supposed to be handled async then we need to pass the io_service into the Log singleton
-    sLog->Initialize(sConfigMgr->GetBoolDefault("Log.Async.Enable", false) ? &_ioService : nullptr);
+    sLog->Initialize(sConfigMgr->GetBoolDefault("Log.Async.Enable", false) ? ioContext.get() : nullptr);
 
     Trinity::Banner::Show("worldserver-daemon",
         [](char const* text)
@@ -146,7 +149,7 @@ extern int main(int argc, char** argv)
         }
     );
 
-    OpenSSLCrypto::threadsSetup();
+    OpenSSLCrypto::threadsSetup(boost::dll::program_location().remove_filename());
 
     // Seed the OpenSSL's PRNG here.
     // That way it won't auto-seed when calling BigNumber::SetRand and slow down the first world login
@@ -167,7 +170,7 @@ extern int main(int argc, char** argv)
     }
 
     // Set signal handlers (this must be done before starting io_service threads, because otherwise they would unblock and exit)
-    boost::asio::signal_set signals(_ioService, SIGINT, SIGTERM);
+    boost::asio::signal_set signals(*ioContext, SIGINT, SIGTERM);
 #if PLATFORM == PLATFORM_WINDOWS
     signals.add(SIGBREAK);
 #endif
@@ -175,13 +178,20 @@ extern int main(int argc, char** argv)
 
     // Start the Boost based thread pool
     int numThreads = sConfigMgr->GetIntDefault("ThreadPool", 1);
-    std::vector<std::thread> threadPool;
+    std::shared_ptr<std::vector<std::thread>> threadPool(new std::vector<std::thread>(), [ioContext](std::vector<std::thread>* del)
+    {
+        ioContext->stop();
+        for (std::thread& thr : *del)
+            thr.join();
+
+        delete del;
+    });
 
     if (numThreads < 1)
         numThreads = 1;
 
     for (int i = 0; i < numThreads; ++i)
-        threadPool.push_back(std::thread(boost::bind(&boost::asio::io_service::run, &_ioService)));
+        threadPool->push_back(std::thread([ioContext]() { ioContext->run(); }));
 
     // Set process priority according to configuration settings
     SetProcessPriority("server.worldserver");
@@ -189,18 +199,17 @@ extern int main(int argc, char** argv)
     // Start the databases
     if (!StartDB())
     {
-        ShutdownThreadPool(threadPool);
         return 1;
     }
 
     // Set server offline (not connectable)
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag | %u WHERE id = '%d'", REALM_FLAG_OFFLINE, realm.Id.Realm);
 
-    sRealmList->Initialize(_ioService, sConfigMgr->GetIntDefault("RealmsStateUpdateDelay", 10));
+    sRealmList->Initialize(*ioContext, sConfigMgr->GetIntDefault("RealmsStateUpdateDelay", 10));
 
     LoadRealmInfo();
 
-    sMetric->Initialize(realm.Name, _ioService, []()
+    sMetric->Initialize(realm.Name, *ioContext, []()
     {
         TC_METRIC_VALUE("online_players", sWorld->GetPlayerCount());
     });
@@ -225,7 +234,7 @@ extern int main(int argc, char** argv)
     // Start the Remote Access port (acceptor) if enabled
     AsyncAcceptor* raAcceptor = nullptr;
     if (sConfigMgr->GetBoolDefault("Ra.Enable", false))
-        raAcceptor = StartRaSocketAcceptor(_ioService);
+        raAcceptor = StartRaSocketAcceptor(*ioContext);
 
     // Start soap serving thread if enabled
     std::thread* soapThread = nullptr;
@@ -246,21 +255,12 @@ extern int main(int argc, char** argv)
         return false;
     }
 
-    sWorldSocketMgr.StartNetwork(_ioService, worldListener, worldPort, networkThreads);
+    sWorldSocketMgr.StartNetwork(*ioContext, worldListener, worldPort, networkThreads);
 
     // Set server online (allow connecting now)
     LoginDatabase.DirectPExecute("UPDATE realmlist SET flag = flag & ~%u, population = 0 WHERE id = '%u'", REALM_FLAG_OFFLINE, realm.Id.Realm);
     realm.PopulationLevel = 0.0f;
     realm.Flags = RealmFlags(realm.Flags & ~uint32(REALM_FLAG_OFFLINE));
-
-    // Start the freeze check callback cycle in 5 seconds (cycle itself is 1 sec)
-    if (int coreStuckTime = sConfigMgr->GetIntDefault("MaxCoreStuckTime", 0))
-    {
-        _maxCoreStuckTimeInMs = coreStuckTime * 1000;
-        _freezeCheckTimer.expires_from_now(boost::posix_time::seconds(5));
-        _freezeCheckTimer.async_wait(FreezeDetectorHandler);
-        TC_LOG_INFO("server.worldserver", "Starting up anti-freeze thread (%u seconds max stuck time)...", coreStuckTime);
-    }
 
     TC_LOG_INFO("server.worldserver", "%s (worldserver-daemon) ready...", GitRevision::GetFullVersion());
 
@@ -269,7 +269,7 @@ extern int main(int argc, char** argv)
     WorldUpdateLoop();
 
     // Shutdown starts here
-    ShutdownThreadPool(threadPool);
+    threadPool.reset();
 
     sLog->SetSynchronous();
 
@@ -335,7 +335,7 @@ void ShutdownCLIThread(std::thread* cliThread)
         {
             // if CancelSynchronousIo() fails, print the error and try with old way
             DWORD errorCode = GetLastError();
-            LPSTR errorBuffer;
+            LPCSTR errorBuffer;
 
             DWORD formatReturnCode = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
                                                    nullptr, errorCode, 0, (LPTSTR)&errorBuffer, 0, nullptr);
@@ -344,7 +344,7 @@ void ShutdownCLIThread(std::thread* cliThread)
 
             TC_LOG_DEBUG("server.worldserver", "Error cancelling I/O of CliThread, error code %u, detail: %s",
                 uint32(errorCode), errorBuffer);
-            LocalFree(errorBuffer);
+            LocalFree((LPSTR)errorBuffer);
 
             // send keyboard input to safely unblock the CLI thread
             INPUT_RECORD b[4];
@@ -382,18 +382,6 @@ void ShutdownCLIThread(std::thread* cliThread)
 #endif
         cliThread->join();
         delete cliThread;
-    }
-}
-
-void ShutdownThreadPool(std::vector<std::thread>& threadPool)
-{
-    sScriptMgr->OnNetworkStop();
-
-    _ioService.stop();
-
-    for (auto& thread : threadPool)
-    {
-        thread.join();
     }
 }
 
@@ -444,43 +432,19 @@ void SignalHandler(const boost::system::error_code& error, int /*signalNumber*/)
         World::StopNow(SHUTDOWN_EXIT_CODE);
 }
 
-void FreezeDetectorHandler(const boost::system::error_code& error)
-{
-    if (!error)
-    {
-        uint32 curtime = getMSTime();
-
-        uint32 worldLoopCounter = World::m_worldLoopCounter;
-        if (_worldLoopCounter != worldLoopCounter)
-        {
-            _lastChangeMsTime = curtime;
-            _worldLoopCounter = worldLoopCounter;
-        }
-        // possible freeze
-        else if (getMSTimeDiff(_lastChangeMsTime, curtime) > _maxCoreStuckTimeInMs)
-        {
-            TC_LOG_ERROR("server.worldserver", "World Thread hangs, kicking out server!");
-            ABORT();
-        }
-
-        _freezeCheckTimer.expires_from_now(boost::posix_time::seconds(1));
-        _freezeCheckTimer.async_wait(FreezeDetectorHandler);
-    }
-}
-
-AsyncAcceptor* StartRaSocketAcceptor(boost::asio::io_service& ioService)
+AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext)
 {
     uint16 raPort = uint16(sConfigMgr->GetIntDefault("Ra.Port", 3443));
     std::string raListener = sConfigMgr->GetStringDefault("Ra.IP", "0.0.0.0");
 
-    AsyncAcceptor* acceptor = new AsyncAcceptor(ioService, raListener, raPort);
+    AsyncAcceptor* acceptor = new AsyncAcceptor(ioContext, raListener, raPort);
     acceptor->AsyncAccept<RASession>();
     return acceptor;
 }
 
 bool LoadRealmInfo()
 {
-    boost::asio::ip::tcp::resolver resolver(_ioService);
+    boost::asio::ip::tcp::resolver resolver(ioContext);
     boost::asio::ip::tcp::resolver::iterator end;
 
     QueryResult result = LoginDatabase.PQuery("SELECT id, name, address, localAddress, localSubnetMask, port, icon, flag, timezone, allowedSecurityLevel, population, gamebuild, Region, Battlegroup FROM realmlist WHERE id = %u", realm.Id.Realm);

@@ -52,9 +52,9 @@ TaskScheduler& TaskScheduler::CancelAll()
 TaskScheduler& TaskScheduler::CancelGroup(group_t const group)
 {
     _task_holder.RemoveIf([group](TaskContainer const& task) -> bool
-    {
-        return task->IsInGroup(group);
-    });
+        {
+            return task->IsInGroup(group);
+        });
     return *this;
 }
 
@@ -161,7 +161,7 @@ bool TaskScheduler::TaskQueue::IsEmpty() const
     return container.empty();
 }
 
-TaskContext& TaskContext::Dispatch(std::function<TaskScheduler&(TaskScheduler&)> const& apply)
+TaskContext& TaskContext::Dispatch(std::function<TaskScheduler& (TaskScheduler&)> const& apply)
 {
     if (auto const owner = _owner.lock())
         apply(*owner);
