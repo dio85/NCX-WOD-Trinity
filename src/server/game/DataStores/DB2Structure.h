@@ -43,6 +43,33 @@ struct AchievementEntry
     uint32 CriteriaTree;                                            // 14
 };
 
+struct AdventureJournalEntry
+{
+    uint32 ID;
+    uint8 Type;
+    uint32 PlayerConditionID;
+    LocalizedString* TestName;
+    LocalizedString* Name;
+    LocalizedString* Description;
+    LocalizedString* ButtonText;
+    uint8 ButtonActionType;
+    int32 TextureFileDataID;
+    uint32 LFGDungeonID;
+    int32 QuestID;
+    uint8 BattlemasterListID;
+    uint8 PriorityMin;
+    uint8 PriorityMax;
+    uint32 BonusPlayerConditionID[2];
+    uint8 BonusValue[2];
+    int32 ItemID;
+    int32 Flags;
+    uint32 CurrencyID;
+    uint32 CurrencyQuantity;
+    LocalizedString* RewardDescription;
+    uint32 WorldMapAreaID;
+    LocalizedString* ContinuedDescription;
+};//ibissssbiiibbbiibbiiiisis
+
 struct AreaGroupMemberEntry
 {
     uint32 ID;                                                      // 0

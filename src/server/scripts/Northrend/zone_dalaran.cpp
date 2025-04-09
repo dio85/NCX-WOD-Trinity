@@ -205,15 +205,15 @@ class npc_minigob_manabonk : public CreatureScript
                                 DoCast(player, SPELL_MANABONKED);
                                 SendMailToPlayer(player);
                             }
-                            events.ScheduleEvent(EVENT_BLINK, 3*IN_MILLISECONDS);
+                            events.ScheduleEvent(EVENT_BLINK, std::chrono::milliseconds(3000));
                             break;
                         case EVENT_BLINK:
                         {
                             DoCast(me, SPELL_IMPROVED_BLINK);
                             Position pos = me->GetRandomNearPosition(frand(15, 40));
                             me->GetMotionMaster()->MovePoint(0, pos.m_positionX, pos.m_positionY, pos.m_positionZ);
-                            events.ScheduleEvent(EVENT_DESPAWN, 3 * IN_MILLISECONDS);
-                            events.ScheduleEvent(EVENT_DESPAWN_VISUAL, 2.5*IN_MILLISECONDS);
+                            events.ScheduleEvent(EVENT_DESPAWN, std::chrono::milliseconds(3000));
+                            events.ScheduleEvent(EVENT_DESPAWN_VISUAL, std::chrono::milliseconds(2500));
                             break;
                         }
                         case EVENT_DESPAWN_VISUAL:

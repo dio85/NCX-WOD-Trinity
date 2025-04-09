@@ -577,6 +577,26 @@ namespace WorldPackets
 
             int32 Count = 0;
         };
+
+        class AdventureJournalOpenQuest final : public ClientPacket
+        {
+        public:
+            AdventureJournalOpenQuest(WorldPacket&& packet) : ClientPacket(CMSG_ADVENTURE_JOURNAL_OPEN_QUEST, std::move(packet)) {}
+
+            void Read() override;
+
+            uint32 JournalID = 0;
+        };
+
+        class AdventureJournalStartQuest final : public ClientPacket
+        {
+        public:
+            AdventureJournalStartQuest(WorldPacket&& packet) : ClientPacket(CMSG_ADVENTURE_JOURNAL_START_QUEST, std::move(packet)) {}
+
+            void Read() override;
+
+            uint32 QuestID = 0;
+        };
     }
 }
 

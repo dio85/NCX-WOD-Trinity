@@ -19,6 +19,7 @@
 #define LFGPackets_h__
 
 #include "ObjectGuid.h"
+#include "Packet.h"
 
 namespace WorldPackets
 {
@@ -30,6 +31,103 @@ namespace WorldPackets
             int32 Id = 0;
             int32 Type = 0;
             uint32 Time = 0;
+        };
+
+        struct LFGBlackListSlot
+        {
+            LFGBlackListSlot() = default;
+            LFGBlackListSlot(uint32 slot, uint32 reason, int32 subReason1, int32 subReason2, uint32 softLock)
+                : Slot(slot), Reason(reason), SubReason1(subReason1), SubReason2(subReason2), SoftLock(softLock) {
+            }
+
+            uint32 Slot = 0;
+            uint32 Reason = 0;
+            int32 SubReason1 = 0;
+            int32 SubReason2 = 0;
+            uint32 SoftLock = 0;
+        };
+
+        struct LFGBlackList
+        {
+            Optional<ObjectGuid> PlayerGuid;
+            std::vector<LFGBlackListSlot> Slot;
+        };
+
+        struct LfgPlayerQuestRewardItem
+        {
+            LfgPlayerQuestRewardItem() {}
+            LfgPlayerQuestRewardItem(int32 itemId, int32 quantity) : ItemID(itemId), Quantity(quantity) {}
+
+            int32 ItemID = 0;
+            int32 Quantity = 0;
+        };
+
+        struct LfgPlayerQuestRewardCurrency
+        {
+            LfgPlayerQuestRewardCurrency() {}
+            LfgPlayerQuestRewardCurrency(int32 currencyID, int32 quantity) : CurrencyID(currencyID), Quantity(quantity) {}
+
+            int32 CurrencyID = 0;
+            int32 Quantity = 0;
+        };
+
+        struct LfgPlayerQuestReward
+        {
+            uint32 Mask = 0;                                            // Roles required for this reward, only used by ShortageReward in SMSG_LFG_PLAYER_INFO
+            int32 RewardMoney = 0;                                      // Only used by SMSG_LFG_PLAYER_INFO
+            int32 RewardXP = 0;
+            std::vector<LfgPlayerQuestRewardItem> Item;
+            std::vector<LfgPlayerQuestRewardCurrency> Currency;         // Only used by SMSG_LFG_PLAYER_INFO
+            std::vector<LfgPlayerQuestRewardCurrency> BonusCurrency;    // Only used by SMSG_LFG_PLAYER_INFO
+            Optional<int32> RewardSpellID;                              // Only used by SMSG_LFG_PLAYER_INFO
+            Optional<int32> Unused1;
+            Optional<uint64> Unused2;
+            Optional<int32> Honor;                                      // Only used by SMSG_REQUEST_PVP_REWARDS_RESPONSE
+        };
+
+
+        struct LfgPlayerDungeonInfo
+        {
+            uint32 Slot = 0;
+            int32 CompletionQuantity = 0;
+            int32 CompletionLimit = 0;
+            int32 CompletionCurrencyID = 0;
+            int32 SpecificQuantity = 0;
+            int32 SpecificLimit = 0;
+            int32 OverallQuantity = 0;
+            int32 OverallLimit = 0;
+            int32 PurseWeeklyQuantity = 0;
+            int32 PurseWeeklyLimit = 0;
+            int32 PurseQuantity = 0;
+            int32 PurseLimit = 0;
+            int32 Quantity = 0;
+            uint32 CompletedMask = 0;
+            bool FirstReward = false;
+            bool ShortageEligible = false;
+            LfgPlayerQuestReward Rewards;
+            std::vector<LfgPlayerQuestReward> ShortageReward;
+        };
+
+        class DFGetSystemInfo final : public ClientPacket
+        {
+        public:
+            DFGetSystemInfo(WorldPacket&& packet) : ClientPacket(CMSG_DF_GET_SYSTEM_INFO, std::move(packet)) {}
+
+            void Read() override;
+
+            uint8 PartyIndex = 0;
+            bool Player = false;
+        };
+
+        class LfgPlayerInfo final : public ServerPacket
+        {
+        public:
+            LfgPlayerInfo() : ServerPacket(SMSG_LFG_PLAYER_INFO) {}
+
+            WorldPacket const* Write() override;
+
+            LFGBlackList BlackList;
+            std::vector<LfgPlayerDungeonInfo> Dungeon;
         };
     }
 }

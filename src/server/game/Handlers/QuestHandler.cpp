@@ -20,6 +20,7 @@
 #include "Log.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "DB2Stores.h"
 #include "World.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -31,6 +32,8 @@
 #include "ScriptMgr.h"
 #include "GameObjectAI.h"
 #include "QuestPackets.h"
+#include "QuestDef.h"
+#include "DB2Structure.h"
 
 void WorldSession::HandleQuestgiverStatusQueryOpcode(WorldPackets::Quest::QuestGiverStatusQuery& packet)
 {
@@ -668,4 +671,66 @@ void WorldSession::HandleQuestgiverStatusMultipleQuery(WorldPackets::Quest::Ques
     }
 
     SendPacket(response.Write());
+}
+
+void PrintAdventureJournalEntry(const AdventureJournalEntry* entry)
+{
+    TC_LOG_INFO("server.info", "ID: %u", entry->ID);
+    TC_LOG_INFO("server.info", "Type: %u", entry->Type);
+    TC_LOG_INFO("server.info", "PlayerConditionID: %u", entry->PlayerConditionID);
+
+    // Print LocalizedStrings as they are pointers
+    TC_LOG_INFO("server.info", "TestName: %s", entry->TestName ? entry->TestName->Str[0] : "NULL");
+    TC_LOG_INFO("server.info", "Name: %s", entry->Name ? entry->Name->Str[0] : "NULL");
+    TC_LOG_INFO("server.info", "Description: %s", entry->Description ? entry->Description->Str[0] : "NULL");
+    TC_LOG_INFO("server.info", "ButtonText: %s", entry->ButtonText ? entry->ButtonText->Str[0] : "NULL");
+
+    TC_LOG_INFO("server.info", "ButtonActionType: %u", entry->ButtonActionType);
+    TC_LOG_INFO("server.info", "TextureFileDataID: %d", entry->TextureFileDataID);
+    TC_LOG_INFO("server.info", "LFGDungeonID: %u", entry->LFGDungeonID);
+    TC_LOG_INFO("server.info", "QuestID: %d", entry->QuestID);
+    TC_LOG_INFO("server.info", "BattlemasterListID: %u", entry->BattlemasterListID);
+    TC_LOG_INFO("server.info", "PriorityMin: %u", entry->PriorityMin);
+    TC_LOG_INFO("server.info", "PriorityMax: %u", entry->PriorityMax);
+
+    // BonusPlayerConditionID and BonusValue are arrays
+    TC_LOG_INFO("server.info", "BonusPlayerConditionID[0]: %u", entry->BonusPlayerConditionID[0]);
+    TC_LOG_INFO("server.info", "BonusPlayerConditionID[1]: %u", entry->BonusPlayerConditionID[1]);
+    TC_LOG_INFO("server.info", "BonusValue[0]: %u", entry->BonusValue[0]);
+    TC_LOG_INFO("server.info", "BonusValue[1]: %u", entry->BonusValue[1]);
+
+    TC_LOG_INFO("server.info", "ItemID: %d", entry->ItemID);
+    TC_LOG_INFO("server.info", "Flags: %d", entry->Flags);
+    TC_LOG_INFO("server.info", "CurrencyID: %u", entry->CurrencyID);
+    TC_LOG_INFO("server.info", "CurrencyQuantity: %u", entry->CurrencyQuantity);
+
+    // Print LocalizedStrings for RewardDescription and ContinuedDescription
+    TC_LOG_INFO("server.info", "RewardDescription: %s", entry->RewardDescription ? entry->RewardDescription->Str[0] : "NULL");
+    TC_LOG_INFO("server.info", "WorldMapAreaID: %u", entry->WorldMapAreaID);
+    TC_LOG_INFO("server.info", "ContinuedDescription: %s", entry->ContinuedDescription ? entry->ContinuedDescription->Str[0] : "NULL");
+}
+
+
+void WorldSession::HandleAdventureJournalOpenQuest(WorldPackets::Quest::AdventureJournalOpenQuest& packet)
+{   
+    AdventureJournalEntry const* entry = sAdventureJournalStore.LookupEntry(packet.JournalID);
+    if (!entry)
+    {
+        TC_LOG_ERROR("server.info", "entry value cannot found!");
+        return;
+    }
+    PrintAdventureJournalEntry(entry);
+
+    Quest const* quest = sObjectMgr->GetQuestTemplate(entry->QuestID);
+    TC_LOG_INFO("server.info", "JournalID: %u, QuestID from entry: %u", packet.JournalID, entry->QuestID);
+
+    if (!quest)
+    {
+        TC_LOG_ERROR("server.info", "Could not find quest template for QuestID: %u", entry->QuestID);
+        return;
+    }
+
+    if (_player->CanTakeQuest(quest, true))
+        _player->PlayerTalkClass->SendQuestGiverQuestDetails(quest, _player->GetGUID(), true);
+    TC_LOG_INFO("server.info", "packet.JournalID: %u | entry->m_ID: %u | entry->QuestID: %u", packet.JournalID, entry->ID, entry->QuestID);
 }

@@ -376,6 +376,11 @@ namespace WorldPackets
         struct ItemInstance;
     }
 
+    namespace LFG
+    {
+        class DFGetSystemInfo;
+    }
+
     namespace Loot
     {
         class LootUnit;
@@ -556,6 +561,7 @@ namespace WorldPackets
         class QuestLogRemoveQuest;
         class QuestPushResult;
         class PushQuestToParty;
+        class AdventureJournalOpenQuest;
     }
 
     namespace RaF
@@ -1451,6 +1457,7 @@ class TC_GAME_API WorldSession
 
         void HandleQuestgiverStatusQueryOpcode(WorldPackets::Quest::QuestGiverStatusQuery& packet);
         void HandleQuestgiverStatusMultipleQuery(WorldPackets::Quest::QuestGiverStatusMultipleQuery& packet);
+        void HandleAdventureJournalOpenQuest(WorldPackets::Quest::AdventureJournalOpenQuest& packet);
         void HandleQuestgiverHelloOpcode(WorldPackets::Quest::QuestGiverHello& packet);
         void HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestGiverAcceptQuest& packet);
         void HandleQuestgiverQueryQuestOpcode(WorldPackets::Quest::QuestGiverQueryQuest& packet);
@@ -1570,7 +1577,6 @@ class TC_GAME_API WorldSession
 
         // Looking for Dungeon/Raid
         void HandleLfgSetCommentOpcode(WorldPacket& recvData);
-        void HandleDFGetSystemInfo(WorldPacket& recvData);
         void SendLfgPlayerLockInfo();
         void SendLfgPartyLockInfo();
         void HandleLfgJoinOpcode(WorldPacket& recvData);
@@ -1579,6 +1585,7 @@ class TC_GAME_API WorldSession
         void HandleLfgProposalResultOpcode(WorldPacket& recvData);
         void HandleLfgSetBootVoteOpcode(WorldPacket& recvData);
         void HandleLfgTeleportOpcode(WorldPacket& recvData);
+        void HandleDFGetSystemInfo(WorldPackets::LFG::DFGetSystemInfo& dfGetSystemInfo);
         void HandleLfrJoinOpcode(WorldPacket& recvData);
         void HandleLfrLeaveOpcode(WorldPacket& recvData);
         void HandleDFGetJoinStatus(WorldPacket& recvData);

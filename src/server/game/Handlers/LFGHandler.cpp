@@ -18,6 +18,7 @@
 #include "LFGMgr.h"
 #include "ObjectMgr.h"
 #include "Group.h"
+#include "LFGPackets.h"
 #include "Player.h"
 #include "Opcodes.h"
 #include "WorldPacket.h"
@@ -269,9 +270,9 @@ void WorldSession::HandleLfgTeleportOpcode(WorldPacket& recvData)
     sLFGMgr->TeleportPlayer(GetPlayer(), out, true);
 }
 
-void WorldSession::HandleDFGetSystemInfo(WorldPacket& recvData)
+void WorldSession::HandleDFGetSystemInfo(WorldPackets::LFG::DFGetSystemInfo& dfGetSystemInfo)
 {
-    bool forPlayer = recvData.ReadBit();
+    bool forPlayer = dfGetSystemInfo.Player;
     TC_LOG_DEBUG("lfg", "CMSG_DF_GET_SYSTEM_INFO %s for %s", GetPlayerInfo().c_str(), (forPlayer ? "player" : "party"));
 
     if (forPlayer)
@@ -289,9 +290,11 @@ void WorldSession::SendLfgPlayerLockInfo()
     lfg::LfgDungeonSet const& randomDungeons =
         sLFGMgr->GetRandomAndSeasonalDungeons(level, GetExpansion());
 
+    WorldPackets::LFG::LfgPlayerInfo lfgPlayerInfo;
+
     // Get player locked Dungeons
-    lfg::LfgLockMap const& lock = sLFGMgr->GetLockedDungeons(guid);
     uint32 rsize = uint32(randomDungeons.size());
+    lfg::LfgLockMap const& lock = sLFGMgr->GetLockedDungeons(guid);
     uint32 lsize = uint32(lock.size());
 
     TC_LOG_DEBUG("lfg", "SMSG_LFG_PLAYER_INFO %s", GetPlayerInfo().c_str());

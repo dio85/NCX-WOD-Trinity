@@ -558,3 +558,13 @@ WorldPacket const* WorldPackets::Quest::DailyQuestsReset::Write()
 
     return &_worldPacket;
 }
+
+void WorldPackets::Quest::AdventureJournalOpenQuest::Read()
+{
+    _worldPacket >> JournalID;
+}
+
+void WorldPackets::Quest::AdventureJournalStartQuest::Read()
+{
+    _worldPacket >> QuestID;
+}

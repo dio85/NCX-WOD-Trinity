@@ -1635,6 +1635,24 @@ LfgLockMap const LFGMgr::GetLockedDungeons(ObjectGuid guid)
                     lockStatus = LFG_LOCKSTATUS_MISSING_ITEM;
         }
 
+        LfgSoftLock softLock = [lockStatus]()
+            {
+                switch (lockStatus)
+                {
+                    // Dungeons which are out of our level range, active season or expansion are hidden from the list
+                case LFG_LOCKSTATUS_TOO_LOW_LEVEL:
+                case LFG_LOCKSTATUS_TOO_HIGH_LEVEL:
+                case LFG_LOCKSTATUS_NOT_IN_SEASON:
+                case LFG_LOCKSTATUS_INSUFFICIENT_EXPANSION:
+                    return LfgSoftLock::Unk2; // only value seen in sniffs
+                default:
+                    return LfgSoftLock::None;
+
+                }
+
+                return LfgSoftLock::None;
+            }();
+
         /* @todo VoA closed if WG is not under team control (LFG_LOCKSTATUS_RAID_LOCKED)
         lockData = LFG_LOCKSTATUS_TOO_HIGH_GEAR_SCORE;
         lockData = LFG_LOCKSTATUS_ATTUNEMENT_TOO_LOW_LEVEL;
@@ -1642,7 +1660,7 @@ LfgLockMap const LFGMgr::GetLockedDungeons(ObjectGuid guid)
         */
 
         if (lockStatus)
-            lock[dungeon->Entry()] = LfgLockInfoData(lockStatus, dungeon->requiredItemLevel, player->GetAverageItemLevel());
+            lock[dungeon->Entry()] = LfgLockInfoData(lockStatus, dungeon->requiredItemLevel, player->GetAverageItemLevel(), softLock);
     }
 
     return lock;

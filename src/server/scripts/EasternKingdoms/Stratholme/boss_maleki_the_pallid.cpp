@@ -90,17 +90,17 @@ public:
                     case EVENT_FROSTBOLT:
                         if (rand32() % 90)
                             DoCastVictim(SPELL_FROSTBOLT);
-                        _events.ScheduleEvent(EVENT_FROSTBOLT, 3.5 * IN_MILLISECONDS);
+                        _events.ScheduleEvent(EVENT_FROSTBOLT, std::chrono::milliseconds(3500));
                         break;
                     case EVENT_ICETOMB:
                         if (rand32() % 65)
                             DoCastVictim(SPELL_ICETOMB);
-                        _events.ScheduleEvent(EVENT_ICETOMB, 28 * IN_MILLISECONDS);
+                        _events.ScheduleEvent(EVENT_ICETOMB, std::chrono::milliseconds(28000));
                         break;
                     case EVENT_DRAINLIFE:
                         if (rand32() % 55)
                             DoCastVictim(SPELL_DRAINLIFE);
-                        _events.ScheduleEvent(EVENT_DRAINLIFE, 31 * IN_MILLISECONDS);
+                        _events.ScheduleEvent(EVENT_DRAINLIFE, std::chrono::milliseconds(31000));
                         break;
                     default:
                         break;
