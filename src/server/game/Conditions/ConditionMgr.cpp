@@ -2373,7 +2373,7 @@ bool ConditionMgr::IsPlayerMeetingCondition(Player const* player, uint32 conditi
     if (!conditionId)
         return true;
 
-    if (!sConditionMgr->IsObjectMeetingNotGroupedConditions(CONDITION_SOURCE_TYPE_PLAYER_CONDITION, conditionId, player))
+    if (!player)
         return false;
 
     if (PlayerConditionEntry const* playerCondition = sPlayerConditionStore.LookupEntry(conditionId))
