@@ -2368,6 +2368,20 @@ inline bool PlayerConditionLogic(uint32 logic, std::array<bool, N>& results)
     return result;
 }
 
+bool ConditionMgr::IsPlayerMeetingCondition(Player const* player, uint32 conditionId)
+{
+    if (!conditionId)
+        return true;
+
+    if (!sConditionMgr->IsObjectMeetingNotGroupedConditions(CONDITION_SOURCE_TYPE_PLAYER_CONDITION, conditionId, player))
+        return false;
+
+    if (PlayerConditionEntry const* playerCondition = sPlayerConditionStore.LookupEntry(conditionId))
+        return IsPlayerMeetingCondition(player, playerCondition);
+
+    return true;
+}
+
 bool ConditionMgr::IsPlayerMeetingCondition(Player const* player, PlayerConditionEntry const* condition)
 {
     if (condition->MinLevel && player->getLevel() < condition->MinLevel)

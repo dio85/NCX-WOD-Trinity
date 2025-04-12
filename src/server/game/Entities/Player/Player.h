@@ -1231,6 +1231,12 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         GameObject* GetGameObjectIfCanInteractWith(ObjectGuid const& guid) const;
         GameObject* GetGameObjectIfCanInteractWith(ObjectGuid const& guid, GameobjectTypes type) const;
 
+        // Adventures.
+        uint16 GetAdventureQuestID() const { return m_adventure_questID; }
+        void SetAdventureQuestID(uint16 questID);
+
+        bool MeetPlayerCondition(uint32 conditionId) const;
+
         void ToggleAFK();
         void ToggleDND();
         bool isAFK() const { return HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_AFK); }
@@ -2696,6 +2702,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         bool   m_WeeklyQuestChanged;
         bool   m_MonthlyQuestChanged;
         bool   m_SeasonalQuestChanged;
+        bool   m_AdventureQuestChanged;
         time_t m_lastDailyQuestTime;
 
         uint32 m_drunkTimer;
@@ -2825,6 +2832,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         std::unique_ptr<Garrison> _garrison;
 
         bool _advancedCombatLoggingEnabled;
+
+        uint16 m_adventure_questID = 0;
 
         // variables to save health and mana before duel and restore them after duel
         uint32 healthBeforeDuel;

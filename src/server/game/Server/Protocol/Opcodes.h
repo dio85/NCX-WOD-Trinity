@@ -56,7 +56,7 @@ enum OpcodeClient : uint32
     CMSG_ADD_IGNORE                                   = 0x3662,
     CMSG_ADD_TOY                                      = 0x31E6,
     CMSG_ADVENTURE_JOURNAL_OPEN_QUEST                 = 0x3164,
-    CMSG_ADVENTURE_JOURNAL_START_QUEST                = 0xBADD,
+    CMSG_ADVENTURE_JOURNAL_START_QUEST                = 0x34AF,
     CMSG_ALTER_APPEARANCE                             = 0x345F,
     CMSG_AREA_SPIRIT_HEALER_QUERY                     = 0x3424,
     CMSG_AREA_SPIRIT_HEALER_QUEUE                     = 0x3425,

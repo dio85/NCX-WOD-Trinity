@@ -562,6 +562,7 @@ namespace WorldPackets
         class QuestPushResult;
         class PushQuestToParty;
         class AdventureJournalOpenQuest;
+        class AdventureJournalStartQuest;
     }
 
     namespace RaF
@@ -1458,6 +1459,7 @@ class TC_GAME_API WorldSession
         void HandleQuestgiverStatusQueryOpcode(WorldPackets::Quest::QuestGiverStatusQuery& packet);
         void HandleQuestgiverStatusMultipleQuery(WorldPackets::Quest::QuestGiverStatusMultipleQuery& packet);
         void HandleAdventureJournalOpenQuest(WorldPackets::Quest::AdventureJournalOpenQuest& packet);
+        void HandleAdventureJournalStartQuest(WorldPackets::Quest::AdventureJournalStartQuest& packet);
         void HandleQuestgiverHelloOpcode(WorldPackets::Quest::QuestGiverHello& packet);
         void HandleQuestgiverAcceptQuestOpcode(WorldPackets::Quest::QuestGiverAcceptQuest& packet);
         void HandleQuestgiverQueryQuestOpcode(WorldPackets::Quest::QuestGiverQueryQuest& packet);

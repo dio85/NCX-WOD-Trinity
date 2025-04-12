@@ -2156,6 +2156,22 @@ GameObject* Player::GetGameObjectIfCanInteractWith(ObjectGuid const& guid, Gameo
     return nullptr;
 }
 
+void Player::SetAdventureQuestID(uint16 questID)
+{
+    Quest const* quest = sObjectMgr->GetQuestTemplate(questID);
+    if (!quest)
+        return;
+
+    m_adventure_questID = questID;
+    m_AdventureQuestChanged = true;
+    KilledMonsterCredit(97067);
+}
+
+bool Player::MeetPlayerCondition(uint32 conditionId) const
+{
+    return ConditionMgr::IsPlayerMeetingCondition(this, conditionId);
+}
+
 bool Player::IsUnderWater() const
 {
     return IsInWater() &&
